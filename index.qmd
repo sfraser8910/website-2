@@ -1,0 +1,57 @@
+---
+title: "Billboard Graphic"
+---
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+```{r}
+library(tidyr)
+library(ggplot2)
+
+# Load the billboard data
+data("billboard")
+
+# Transform from wide to long format
+billboard_long <- billboard %>%
+  pivot_longer(cols = starts_with("wk"),
+               names_to = "week",
+               values_to = "rank",
+               names_prefix = "wk") %>%
+  mutate(week = as.integer(week)) %>%
+  filter(!is.na(rank))
+
+# Select top 5 songs by peak rank
+top_songs <- billboard_long %>%
+  group_by(track, artist) %>%
+  summarise(min_rank = min(rank), .groups = "drop") %>%
+  slice_min(order_by = min_rank, n = 5) %>%
+  unite("song", artist, track, sep = " - ")
+
+# Prepare data for plotting
+plot_data <- billboard_long %>%
+  unite("song", artist, track, sep = " - ") %>%
+  semi_join(top_songs, by = "song")
+
+# Create the plot
+ggplot(plot_data, aes(x = week, y = rank, color = song)) +
+  geom_line(size = 1.2) +
+  scale_y_reverse(breaks = seq(1, 100, by = 10)) +
+  scale_x_continuous(breaks = seq(0, 76, by = 5)) +
+  labs(
+    title = "🎶 Billboard Top 100 Chart Trajectories",
+    subtitle = "Top 5 Songs by Peak Rank (2000)",
+    x = "Week on Chart",
+    y = "Chart Position",
+    color = "Song"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(size = 13),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  ) +
+  scale_color_brewer(palette = "Set1")
+```
